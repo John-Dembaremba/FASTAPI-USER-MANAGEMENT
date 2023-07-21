@@ -1,0 +1,42 @@
+version: '3.8'
+services:
+  
+  postgres_usm:
+    image: postgres
+    restart: always
+    env_file:
+      - .env
+    command: -p ${POSTGRES_PORT}
+    container_name: "postgres_usm"
+    expose:
+      - ${POSTGRES_PORT}
+    volumes:
+      - usm-pg-data:/usr/postgresql/data
+    networks:
+      - usm-api-net
+
+  usm-api:
+    depends_on:
+      - postgres_usm
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: "usm-api"
+    image: usm-api:v1
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - 8000:8000
+    command: bash -c "bash utils/bash_scripts/wait-for-it.sh postgres_db:${POSTGRES_PORT} -t 30 && bash utils/bash_scripts/entrypoint.sh"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/code
+    networks:
+      - usm-api-net
+volumes:
+  usm-pg-data:
+  sagereport-redis-data:
+networks:
+  usm-api-net:
+    driver: bridge
